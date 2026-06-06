@@ -137,7 +137,7 @@
             }, [isActive]);
         };
 
-        const QDProtocol = () => {
+        const YosudaTGUProtocol = () => {
             const [isRunning, setIsRunning] = useState(false);
             const [time, setTime] = useState(0); // in seconds
             
@@ -198,7 +198,7 @@
 
             const handleToggle = () => {
                 if (!isRunning && time === 0) {
-                    announce("Begin Quick and the Dead protocol. Go. Sprint left.");
+                    announce("Begin Yosuda and TGU protocol. Go. Sprint left.");
                 }
                 setIsRunning(!isRunning);
             };
@@ -219,7 +219,7 @@
                     <div className="w-full flex justify-between items-end border-b border-zinc-800 pb-4 mb-8">
                         <div>
                             <div className="text-[10px] text-brand-orange uppercase tracking-[0.2em] font-bold">Protocol</div>
-                            <div className="text-xl font-mono text-white">Q&D Loop</div>
+                            <div className="text-xl font-mono text-white">Yosuda & TGU</div>
                         </div>
                         <div className="text-right">
                             <div className="text-[10px] text-zinc-500 uppercase tracking-[0.2em] font-bold">Total Time</div>
@@ -269,6 +269,245 @@
                             <ResetIcon />
                         </button>
                     </div>
+
+                </div>
+            );
+        };
+
+        const QDSnatchProtocol = () => {
+            const [phase, setPhase] = useState('setup'); // 'setup', 'active', 'complete'
+            const [loadDice, setLoadDice] = useState(0);
+            const [isRolling, setIsRolling] = useState(false);
+            
+            const [protocol, setProtocol] = useState('5/4');
+            const [seriesCount, setSeriesCount] = useState(3);
+            
+            const [time, setTime] = useState(0);
+            const [currentSeries, setCurrentSeries] = useState(1);
+            const [isRunning, setIsRunning] = useState(false);
+
+            useWakeLock(isRunning);
+
+            const seriesDuration = protocol === '5/4' ? 180 : 240;
+
+            const rollDice = () => {
+                setIsRolling(true);
+                let rolls = 0;
+                const interval = setInterval(() => {
+                    setLoadDice(Math.floor(Math.random() * 6) + 1);
+                    rolls++;
+                    if (rolls > 10) {
+                        clearInterval(interval);
+                        setIsRolling(false);
+                    }
+                }, 80);
+            };
+
+            const getLoadData = (val) => {
+                if (val === 0) return { name: "AWAITING ROLL", color: "text-zinc-600", desc: "Roll to determine load." };
+                if (val <= 2) return { name: "LIGHT (40-50%)", color: "text-brand-orange", desc: "Active recovery, speed, technique." };
+                if (val <= 4) return { name: "MEDIUM (60-70%)", color: "text-white", desc: "Crisp lockouts, structural density." };
+                return { name: "HEAVY (80-85%)", color: "text-red-500", desc: "Absolute force. Maximum tension." };
+            };
+
+            const loadData = getLoadData(loadDice);
+
+            useEffect(() => {
+                let interval;
+                if (isRunning) {
+                    interval = setInterval(() => {
+                        setTime(t => {
+                            const newTime = t + 1;
+                            
+                            // Check triggers BEFORE updating phase
+                            if (protocol === '5/4') {
+                                if (newTime === 30 || newTime === 60 || newTime === 90) announce("Go.");
+                                else if (newTime === 120) announce("Deep rest. Focus on breathing.");
+                                else if (newTime === 170 && currentSeries < seriesCount) announce("Ten seconds.");
+                            } else {
+                                if (newTime === 60) announce("Go.");
+                                else if (newTime === 90) announce("Deep rest. Focus on breathing.");
+                                else if (newTime === 230 && currentSeries < seriesCount) announce("Ten seconds.");
+                            }
+
+                            // Series Boundary
+                            if (newTime >= seriesDuration) {
+                                if (currentSeries < seriesCount) {
+                                    setCurrentSeries(cs => cs + 1);
+                                    announce(`Series ${currentSeries + 1}. Go.`);
+                                    return 0; // Reset time for next series
+                                } else {
+                                    setIsRunning(false);
+                                    setPhase('complete');
+                                    announce("Protocol complete. Outstanding work.");
+                                    return newTime;
+                                }
+                            }
+                            return newTime;
+                        });
+                    }, 1000);
+                }
+                return () => clearInterval(interval);
+            }, [isRunning, currentSeries, protocol, seriesCount, seriesDuration]);
+
+            const handleStart = () => {
+                setPhase('active');
+                setIsRunning(true);
+                announce(`Begin Snatch Protocol. Series 1. Go.`);
+            };
+
+            const handleReset = () => {
+                setIsRunning(false);
+                setPhase('setup');
+                setTime(0);
+                setCurrentSeries(1);
+                if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+            };
+
+            const formatTime = (s) => `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+            
+            // Calculate current status for visual display
+            let currentStatus = "WORK";
+            if (protocol === '5/4') {
+                if (time > 15 && time < 30) currentStatus = "RECOVER";
+                else if (time > 45 && time < 60) currentStatus = "RECOVER";
+                else if (time > 75 && time < 90) currentStatus = "RECOVER";
+                else if (time >= 120) currentStatus = "DEEP REST";
+            } else {
+                if (time > 30 && time < 60) currentStatus = "RECOVER";
+                else if (time >= 90) currentStatus = "DEEP REST";
+            }
+
+            return (
+                <div className="flex-1 flex flex-col items-center p-6 w-full max-w-lg mx-auto animate-fade-in">
+                    
+                    {phase === 'setup' && (
+                        <div className="w-full flex flex-col items-center">
+                            <h2 className="text-[10px] font-mono text-zinc-500 uppercase tracking-[0.2em] mb-6 w-full text-center border-b border-zinc-800 pb-2">Mission Configuration</h2>
+                            
+                            {/* Dice Roll Gateway */}
+                            <div className="w-full bg-panel-bg border border-zinc-800 rounded-xl p-6 flex flex-col items-center mb-6 shadow-lg">
+                                <div className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-4">Stochastic Load Selector</div>
+                                <div className={`text-3xl font-black italic uppercase tracking-wider mb-2 ${loadData.color} ${isRolling ? 'animate-pulse' : ''}`}>
+                                    {isRolling ? "CALCULATING..." : loadData.name}
+                                </div>
+                                <p className="text-xs text-zinc-400 font-mono text-center mb-6 h-8">{!isRolling && loadData.desc}</p>
+                                
+                                <button 
+                                    onClick={rollDice}
+                                    disabled={isRolling}
+                                    className="w-full py-3 rounded border border-brand-orange text-brand-orange font-bold uppercase tracking-widest hover:bg-brand-orange hover:text-black transition-all text-xs"
+                                >
+                                    Roll Dice
+                                </button>
+                            </div>
+
+                            {/* Options */}
+                            <div className="w-full flex gap-4 mb-6">
+                                <div className="flex-1">
+                                    <label className="text-[10px] text-zinc-500 uppercase mb-2 block font-bold tracking-widest">Protocol</label>
+                                    <div className="flex bg-zinc-900 p-1 rounded border border-zinc-800">
+                                        <button onClick={() => setProtocol('5/4')} className={`flex-1 py-2 text-xs font-bold transition-all rounded ${protocol === '5/4' ? 'bg-brand-orange text-black' : 'text-zinc-500'}`}>5/4 (Power)</button>
+                                        <button onClick={() => setProtocol('10/2')} className={`flex-1 py-2 text-xs font-bold transition-all rounded ${protocol === '10/2' ? 'bg-brand-orange text-black' : 'text-zinc-500'}`}>10/2 (Mass)</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="w-full mb-8">
+                                <label className="text-[10px] text-zinc-500 uppercase mb-2 block font-bold tracking-widest">Series Count</label>
+                                <div className="flex gap-2">
+                                    {[2, 3, 4, 5].map(num => (
+                                        <button 
+                                            key={num} 
+                                            onClick={() => setSeriesCount(num)}
+                                            className={`flex-1 py-3 text-sm font-black font-mono rounded border transition-all ${seriesCount === num ? 'border-brand-orange bg-brand-orange/10 text-brand-orange' : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:border-zinc-600'}`}
+                                        >
+                                            {num}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <button 
+                                onClick={handleStart}
+                                disabled={loadDice === 0}
+                                className="w-full h-16 rounded bg-brand-orange text-black font-black uppercase tracking-widest flex items-center justify-center hover:bg-[#e65900] transition-all disabled:opacity-30 disabled:hover:bg-brand-orange"
+                            >
+                                COMMENCE
+                            </button>
+                        </div>
+                    )}
+
+                    {phase === 'active' && (
+                        <div className="w-full flex flex-col items-center animate-slide-up">
+                            {/* Header Info */}
+                            <div className="w-full flex justify-between items-end border-b border-zinc-800 pb-4 mb-8">
+                                <div>
+                                    <div className="text-[10px] text-brand-orange uppercase tracking-[0.2em] font-bold">Q&D Snatch</div>
+                                    <div className="text-xl font-mono text-white">Series {currentSeries} <span className="text-zinc-600 text-sm">/ {seriesCount}</span></div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-[10px] text-zinc-500 uppercase tracking-[0.2em] font-bold">Protocol</div>
+                                    <div className="text-xl font-mono text-zinc-300">{protocol}</div>
+                                </div>
+                            </div>
+
+                            {/* Main Timer HUD */}
+                            <div className="w-full bg-panel-bg border border-zinc-800 rounded-xl p-8 flex flex-col items-center justify-center relative overflow-hidden shadow-2xl">
+                                
+                                <div className="text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-2">Current Phase</div>
+                                <div className={`text-5xl md:text-6xl font-black italic uppercase text-center leading-none mb-6 transition-colors duration-300 ${currentStatus === 'WORK' ? 'text-white' : currentStatus === 'DEEP REST' ? 'text-brand-orange' : 'text-zinc-600'}`}>
+                                    {currentStatus}
+                                </div>
+
+                                {/* Progress Bar */}
+                                <div className="w-full bg-zinc-900 h-2 mb-6 rounded-full overflow-hidden">
+                                    <div 
+                                        className={`h-full progress-bar ${currentStatus === 'DEEP REST' ? 'bg-brand-orange' : 'bg-white'}`} 
+                                        style={{ width: `${(time / seriesDuration) * 100}%` }}
+                                    ></div>
+                                </div>
+
+                                {/* Countdown */}
+                                <div className="text-8xl font-mono font-bold text-white tracking-tighter tabular-nums drop-shadow-md">
+                                    {formatTime(seriesDuration - time)}
+                                </div>
+                            </div>
+
+                            {/* Controls */}
+                            <div className="mt-8 flex items-center justify-center gap-6 w-full">
+                                <button 
+                                    onClick={() => setIsRunning(!isRunning)}
+                                    className="flex-1 h-16 rounded border border-brand-orange text-brand-orange font-black uppercase tracking-widest flex items-center justify-center hover:bg-brand-orange hover:text-black transition-colors"
+                                >
+                                    {isRunning ? "PAUSE" : "RESUME"}
+                                </button>
+                                <button 
+                                    onClick={handleReset}
+                                    className="w-16 h-16 rounded border border-zinc-700 flex items-center justify-center text-zinc-500 hover:text-white hover:border-white transition-all"
+                                >
+                                    <ResetIcon />
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {phase === 'complete' && (
+                        <div className="w-full flex flex-col items-center justify-center text-center animate-fade-in py-12">
+                            <h1 className="text-4xl font-black text-white italic mb-2 uppercase">Protocol Complete</h1>
+                            <div className="w-16 h-1 bg-brand-orange mx-auto mb-8"></div>
+                            <div className="text-zinc-400 font-mono text-sm mb-12">
+                                Executed {seriesCount} Series of Q&D {protocol}<br/>
+                                Total Volume Completed
+                            </div>
+                            <button 
+                                onClick={handleReset}
+                                className="w-full h-16 rounded bg-brand-orange text-black font-black uppercase tracking-widest flex items-center justify-center hover:bg-[#e65900] transition-colors"
+                            >
+                                Reset Terminal
+                            </button>
+                        </div>
+                    )}
 
                 </div>
             );
@@ -424,7 +663,7 @@
         };
 
         const App = () => {
-            const [activeTab, setActiveTab] = useState('QD'); // 'QD' or 'DFW'
+            const [activeTab, setActiveTab] = useState('YOSUDA'); // 'YOSUDA', 'SNATCH', 'DFW'
 
             // Clean up speech synthesis when unmounting or switching tabs
             useEffect(() => {
@@ -461,17 +700,23 @@
                         </header>
 
                         {/* Tab Navigation */}
-                        <nav className="w-full px-6 pt-4 mb-2">
-                            <div className="flex border-b border-zinc-800">
+                        <nav className="w-full px-4 md:px-6 pt-4 mb-2">
+                            <div className="flex border-b border-zinc-800 justify-between">
                                 <button 
-                                    onClick={() => setActiveTab('QD')}
-                                    className={`flex-1 pb-4 text-sm font-bold uppercase tracking-widest transition-all ${activeTab === 'QD' ? 'text-brand-orange border-b-2 border-brand-orange' : 'text-zinc-600 hover:text-zinc-400 border-b-2 border-transparent'}`}
+                                    onClick={() => setActiveTab('YOSUDA')}
+                                    className={`flex-1 pb-4 text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all ${activeTab === 'YOSUDA' ? 'text-brand-orange border-b-2 border-brand-orange' : 'text-zinc-600 hover:text-zinc-400 border-b-2 border-transparent'}`}
                                 >
-                                    Quick & Dead
+                                    Yosuda & TGU
+                                </button>
+                                <button 
+                                    onClick={() => setActiveTab('SNATCH')}
+                                    className={`flex-1 pb-4 text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all ${activeTab === 'SNATCH' ? 'text-brand-orange border-b-2 border-brand-orange' : 'text-zinc-600 hover:text-zinc-400 border-b-2 border-transparent'}`}
+                                >
+                                    Q&D Snatch
                                 </button>
                                 <button 
                                     onClick={() => setActiveTab('DFW')}
-                                    className={`flex-1 pb-4 text-sm font-bold uppercase tracking-widest transition-all ${activeTab === 'DFW' ? 'text-brand-orange border-b-2 border-brand-orange' : 'text-zinc-600 hover:text-zinc-400 border-b-2 border-transparent'}`}
+                                    className={`flex-1 pb-4 text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all ${activeTab === 'DFW' ? 'text-brand-orange border-b-2 border-brand-orange' : 'text-zinc-600 hover:text-zinc-400 border-b-2 border-transparent'}`}
                                 >
                                     D.F.W.
                                 </button>
@@ -479,8 +724,10 @@
                         </nav>
 
                         {/* Protocol Container */}
-                        <main className="flex-1 flex flex-col relative w-full">
-                            {activeTab === 'QD' ? <QDProtocol /> : <DFWProtocol />}
+                        <main className="flex-1 flex flex-col relative w-full overflow-y-auto">
+                            {activeTab === 'YOSUDA' && <YosudaTGUProtocol />}
+                            {activeTab === 'SNATCH' && <QDSnatchProtocol />}
+                            {activeTab === 'DFW' && <DFWProtocol />}
                         </main>
 
                         {/* Footer */}

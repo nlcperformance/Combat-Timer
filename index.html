@@ -280,7 +280,7 @@
             const [isRolling, setIsRolling] = useState(false);
             
             const [protocol, setProtocol] = useState('5/4');
-            const [seriesCount, setSeriesCount] = useState(3);
+            const [seriesCount, setSeriesCount] = useState(0);
             
             const [time, setTime] = useState(0);
             const [currentSeries, setCurrentSeries] = useState(1);
@@ -298,6 +298,17 @@
                     rolls++;
                     if (rolls > 10) {
                         clearInterval(interval);
+                        const finalRoll = Math.floor(Math.random() * 6) + 1;
+                        setLoadDice(finalRoll);
+                        
+                        // Map dice roll to Series Count automatically
+                        let s = 2;
+                        if (finalRoll === 1) s = 2;
+                        else if (finalRoll <= 3) s = 3;
+                        else if (finalRoll <= 5) s = 4;
+                        else s = 5;
+                        setSeriesCount(s);
+                        
                         setIsRolling(false);
                     }
                 }, 80);
@@ -361,6 +372,8 @@
                 setPhase('setup');
                 setTime(0);
                 setCurrentSeries(1);
+                setLoadDice(0);
+                setSeriesCount(0);
                 if ('speechSynthesis' in window) window.speechSynthesis.cancel();
             };
 
@@ -391,6 +404,13 @@
                                 <div className={`text-3xl font-black italic uppercase tracking-wider mb-2 ${loadData.color} ${isRolling ? 'animate-pulse' : ''}`}>
                                     {isRolling ? "CALCULATING..." : loadData.name}
                                 </div>
+                                
+                                {!isRolling && loadDice > 0 && (
+                                    <div className="text-xl font-mono font-bold text-white mb-2">
+                                        {seriesCount} SERIES <span className="text-zinc-500 text-sm ml-1">({seriesCount * 20} REPS)</span>
+                                    </div>
+                                )}
+                                
                                 <p className="text-xs text-zinc-400 font-mono text-center mb-6 h-8">{!isRolling && loadData.desc}</p>
                                 
                                 <button 
@@ -398,39 +418,24 @@
                                     disabled={isRolling}
                                     className="w-full py-3 rounded border border-brand-orange text-brand-orange font-bold uppercase tracking-widest hover:bg-brand-orange hover:text-black transition-all text-xs"
                                 >
-                                    Roll Dice
+                                    {loadDice === 0 ? "Roll Dice" : "Re-roll Load"}
                                 </button>
                             </div>
 
                             {/* Options */}
-                            <div className="w-full flex gap-4 mb-6">
+                            <div className="w-full flex gap-4 mb-8">
                                 <div className="flex-1">
-                                    <label className="text-[10px] text-zinc-500 uppercase mb-2 block font-bold tracking-widest">Protocol</label>
+                                    <label className="text-[10px] text-zinc-500 uppercase mb-2 block font-bold tracking-widest">Protocol Strategy</label>
                                     <div className="flex bg-zinc-900 p-1 rounded border border-zinc-800">
-                                        <button onClick={() => setProtocol('5/4')} className={`flex-1 py-2 text-xs font-bold transition-all rounded ${protocol === '5/4' ? 'bg-brand-orange text-black' : 'text-zinc-500'}`}>5/4 (Power)</button>
-                                        <button onClick={() => setProtocol('10/2')} className={`flex-1 py-2 text-xs font-bold transition-all rounded ${protocol === '10/2' ? 'bg-brand-orange text-black' : 'text-zinc-500'}`}>10/2 (Mass)</button>
+                                        <button onClick={() => setProtocol('5/4')} className={`flex-1 py-3 text-xs font-bold transition-all rounded ${protocol === '5/4' ? 'bg-brand-orange text-black shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}>5/4 (Power)</button>
+                                        <button onClick={() => setProtocol('10/2')} className={`flex-1 py-3 text-xs font-bold transition-all rounded ${protocol === '10/2' ? 'bg-brand-orange text-black shadow-md' : 'text-zinc-500 hover:text-zinc-300'}`}>10/2 (Mass)</button>
                                     </div>
-                                </div>
-                            </div>
-
-                            <div className="w-full mb-8">
-                                <label className="text-[10px] text-zinc-500 uppercase mb-2 block font-bold tracking-widest">Series Count</label>
-                                <div className="flex gap-2">
-                                    {[2, 3, 4, 5].map(num => (
-                                        <button 
-                                            key={num} 
-                                            onClick={() => setSeriesCount(num)}
-                                            className={`flex-1 py-3 text-sm font-black font-mono rounded border transition-all ${seriesCount === num ? 'border-brand-orange bg-brand-orange/10 text-brand-orange' : 'border-zinc-800 bg-zinc-900 text-zinc-500 hover:border-zinc-600'}`}
-                                        >
-                                            {num}
-                                        </button>
-                                    ))}
                                 </div>
                             </div>
 
                             <button 
                                 onClick={handleStart}
-                                disabled={loadDice === 0}
+                                disabled={loadDice === 0 || isRolling}
                                 className="w-full h-16 rounded bg-brand-orange text-black font-black uppercase tracking-widest flex items-center justify-center hover:bg-[#e65900] transition-all disabled:opacity-30 disabled:hover:bg-brand-orange"
                             >
                                 COMMENCE
